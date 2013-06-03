@@ -1,0 +1,39 @@
+midiSoundNotes = Import["http://www.vgmusic.com/music/console/nintendo/snes/Midori.\mid", "SoundNotes"]
+uniqueSounds = 
+ Count[Map[Length, midiSoundNotes[[All]], {1}], Except[0]]
+Table[Length[midiSoundNotes[[i]]], {i, Length[midiSoundNotes]}]
+
+notes := midiSoundNotes[[Range[uniqueSounds] + 1]] /. 
+   SoundNote[p_, _, _, _] -> p // Quiet
+
+noteShift[n_] := 
+ StringJoin /@ Drop[Characters[notes[[n]]], 0, -1] // Quiet
+ 
+ fullToneShift[oct_, note_, channel_] := 
+ Module[{o = oct, n = note, 
+   ch = channel}, (FTS[o, n, ch] := 
+    Partition[
+     Total /@ 
+      Partition[
+       Riffle[ReplaceRepeated[noteShift[ch] = noteShift[ch], 
+          If[n > 0, stepUp, stepDown], MaxIterations -> Abs[n]] // 
+         Quiet, ToExpression[Last /@ Characters /@ notes[[ch]]] + o], 
+       2], 1]; StringJoin /@ 
+    Partition[
+     ToString /@ 
+      Riffle[FTS[o, n, ch][[All, 1, 2]], FTS[o, n, ch][[All, 1, 1]]], 
+     2])]
+     
+     q[x1_: 0, y1_: 0, x2_: 0, y2_: 0, x3_: 0, y3_: 0, x4_: 0, y4_: 0, 
+  ch1_: 1, ch2_: 2, ch3_: 3, ch4_: 4] := 
+ Flatten[ReplacePart[
+    midiSoundNotes, {{ch1 + 1, n1_, 1} -> 
+      fullToneShift[x1, y1, ch1][[n1]], {ch2 + 1, n2_, 1} -> 
+      fullToneShift[x2, y2, ch2][[n2]], {ch3 + 1, n3_, 1} -> 
+      fullToneShift[x3, y3, ch3][[n3]], {ch4 + 1, n4_, 1} -> 
+      fullToneShift[x4, y4, ch4][[n4]]}]] // Quiet
+      
+      List[Sound[q[1, 0, 1, 0, -1, 0, -1, 0]], 
+ Sound[q[0, -1, 0, -2, 0, 1, 0, 2]], Sound[q[0, 0, 0, 0, 1, 1, 0, 0]],
+  Sound[q[1, -2, -1, -3, -1, 3, 1, 2]], 
+ Sound[Flatten[midiSoundNotes]]]
